@@ -130,6 +130,37 @@ enum SelfTest {
         toolState.dimLevel = 0
         check(alpha(canvas.snapshot(), at: empty, viewSize: size) == 0, "dimming didn't turn off")
 
+        // 8. Export: the capture under the annotations, no dimming, crops in top-left pixels.
+        document.removeAll()
+        toolState.colorIndex = 0  // red
+        toolState.tool = .rectangle
+        canvas.simulateGesture([CGPoint(x: 100, y: 50), CGPoint(x: 200, y: 150)])
+        toolState.dimLevel = 0.5
+        let blue: [UInt8] = [0, 0, 255, 255]
+        let background = solidImage(width: Int(size.width) * 2, height: Int(size.height) * 2, rgba: blue)
+        if let export = ExportRenderer.render(
+            background: background, annotations: document.annotations, pointSize: size, rect: nil)
+        {
+            save(export, "8-export.png", in: outputDirectory)
+            check(export.width == background.width && export.height == background.height, "export isn't screen-sized")
+            check(rgba(export, at: CGPoint(x: 10, y: 10), viewSize: size) == blue, "export lost the background (or dimmed it)")
+            check(isRed(rgba(export, at: CGPoint(x: 100, y: 100), viewSize: size)), "export lost the rectangle (flipped?)")
+        } else {
+            check(false, "export render failed")
+        }
+        let crop = CGRect(x: 90, y: 40, width: 40, height: 40)
+        if let region = ExportRenderer.render(
+            background: background, annotations: document.annotations, pointSize: size, rect: crop)
+        {
+            save(region, "9-export-region.png", in: outputDirectory)
+            check(region.width == 80 && region.height == 80, "region is \(region.width)×\(region.height), expected 80×80")
+            check(rgba(region, at: CGPoint(x: 5, y: 5), viewSize: crop.size) == blue, "region corner isn't background")
+            check(isRed(rgba(region, at: CGPoint(x: 10, y: 30), viewSize: crop.size)), "region crop is off (flipped?)")
+        } else {
+            check(false, "region render failed")
+        }
+        toolState.dimLevel = 0
+
         print("self-test: live/committed pixel difference \(String(format: "%.4f%%", difference * 100))")
         for failure in failures { print("FAIL: \(failure)") }
         print(failures.isEmpty ? "self-test: PASS" : "self-test: FAIL")
@@ -139,6 +170,28 @@ enum SelfTest {
     private static func save(_ image: CGImage, _ name: String, in directory: URL) {
         let rep = NSBitmapImageRep(cgImage: image)
         try? rep.representation(using: .png, properties: [:])?.write(to: directory.appendingPathComponent(name))
+    }
+
+    private static func solidImage(width: Int, height: Int, rgba: [UInt8]) -> CGImage {
+        let context = CGContext(
+            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        context.setFillColor(
+            red: CGFloat(rgba[0]) / 255, green: CGFloat(rgba[1]) / 255, blue: CGFloat(rgba[2]) / 255,
+            alpha: CGFloat(rgba[3]) / 255)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        return context.makeImage()!
+    }
+
+    /// The pixel at `point` (top-left view coordinates) as [r, g, b, a], premultiplied.
+    private static func rgba(_ image: CGImage, at point: CGPoint, viewSize: CGSize) -> [UInt8] {
+        let scale = CGFloat(image.width) / viewSize.width
+        let index = (Int(point.y * scale) * image.width + Int(point.x * scale)) * 4
+        return Array(pixels(image)[index..<index + 4])
+    }
+
+    private static func isRed(_ pixel: [UInt8]) -> Bool {
+        pixel[0] > 180 && pixel[1] < 120 && pixel[2] < 120
     }
 
     private static func pixels(_ image: CGImage) -> [UInt8] {
