@@ -40,6 +40,13 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         clear.isEnabled = screens.hasAnnotations
         menu.addItem(clear)
 
+        menu.addItem(.separator())
+        menu.addItem(item("Copy Screen", #selector(copyScreen), key: "c"))
+        let region = item("Copy Region…", #selector(copyRegion), key: "c")
+        region.keyEquivalentModifierMask = [.command, .shift]
+        menu.addItem(region)
+        menu.addItem(.separator())
+
         let fade = NSMenuItem(title: "Auto-Fade Drawings", action: nil, keyEquivalent: "")
         let fadeMenu = NSMenu()
         for (index, seconds) in Self.fadeChoices.enumerated() {
@@ -83,6 +90,14 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func clearAll() {
         screens.clearAll()
+    }
+
+    @objc private func copyScreen() {
+        screens.copyScreen()
+    }
+
+    @objc private func copyRegion() {
+        screens.copyRegion()
     }
 
     @objc private func chooseFade(_ sender: NSMenuItem) {

@@ -287,3 +287,44 @@ func makeTool(_ kind: ToolKind) -> CanvasTool {
     case .text: TextTool()
     }
 }
+
+/// Copy Region…: drag a rectangle to copy that part of the screen. Swapped in by
+/// `CanvasView.beginRegionPick(onFinish:)` instead of the current tool. `onFinish` gets the
+/// rect, or nil when the pick was a click (or Esc, via `abort(in:)`).
+@MainActor
+final class RegionTool: CanvasTool {
+    private let onFinish: (CGRect?) -> Void
+    private var start: CGPoint?
+
+    init(onFinish: @escaping (CGRect?) -> Void) {
+        self.onFinish = onFinish
+    }
+
+    var cursor: NSCursor { .crosshair }
+
+    func mouseDown(_ input: PointerInput, in canvas: CanvasView) {
+        start = input.point
+    }
+
+    func mouseDragged(_ input: PointerInput, in canvas: CanvasView) {
+        guard let start else { return }
+        canvas.overlayView.showMarquee(ExportRegion.rect(from: start, to: input.point, in: canvas.bounds))
+    }
+
+    func mouseUp(_ input: PointerInput, in canvas: CanvasView) {
+        guard let start else { return }
+        cancel(in: canvas)
+        onFinish(ExportRegion.rect(from: start, to: input.point, in: canvas.bounds))
+    }
+
+    /// Esc: ends the pick without a rect.
+    func abort(in canvas: CanvasView) {
+        cancel(in: canvas)
+        onFinish(nil)
+    }
+
+    func cancel(in canvas: CanvasView) {
+        start = nil
+        canvas.overlayView.showMarquee(nil)
+    }
+}

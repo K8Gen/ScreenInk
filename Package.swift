@@ -14,7 +14,7 @@ let package = Package(
         .executableTarget(
             name: "ScreenInk",
             dependencies: ["ScreenInkCore"],
-            linkerSettings: [.linkedFramework("Carbon")]
+            linkerSettings: [.linkedFramework("Carbon"), .linkedFramework("ScreenCaptureKit")]
         ),
         .testTarget(name: "ScreenInkCoreTests", dependencies: ["ScreenInkCore"]),
     ]

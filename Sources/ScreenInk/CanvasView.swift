@@ -10,6 +10,8 @@ final class CanvasView: NSView, NSTextViewDelegate {
     let toolState: ToolState
     /// Asked to hide the overlay (Esc with nothing selected).
     var onDeactivateRequest: (() -> Void)?
+    /// ⌘C (whole screen) or ⇧⌘C (pick a region).
+    var onCopyRequest: ((_ region: Bool) -> Void)?
 
     let dimView: DimView
     let annotationsView: AnnotationsView
@@ -24,6 +26,8 @@ final class CanvasView: NSView, NSTextViewDelegate {
         didSet { updateSelectionIndicator() }
     }
     private var dragOffset: CGVector?
+    /// Set while Copy Region… waits for a drag; the region tool replaces the current tool.
+    private(set) var isPickingRegion = false
 
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
@@ -76,17 +80,13 @@ final class CanvasView: NSView, NSTextViewDelegate {
 
     private func toolStateDidChange() {
         dimView.setLevel(toolState.dimLevel, animated: true)
-        guard toolState.tool != toolKind else { return }
+        guard toolState.tool != toolKind, !isPickingRegion else { return }
         tool.cancel(in: self)
         endTextEditing()
         toolKind = toolState.tool
         tool = makeTool(toolKind)
         if toolKind != .select { selection = [] }
-        if window?.isVisible == true, let window,
-            bounds.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil))
-        {
-            tool.cursor.set()
-        }
+        updateCursorIfInside()
     }
 
     /// Inserts a finished annotation and schedules its auto-fade if enabled.
@@ -113,6 +113,35 @@ final class CanvasView: NSView, NSTextViewDelegate {
         tool.cancel(in: self)
         endTextEditing()
         selection = []
+    }
+
+    // MARK: Region pick
+
+    /// Swaps in the region tool until `endRegionPick()`. `onFinish` gets the dragged rect,
+    /// or nil for a click or Esc.
+    func beginRegionPick(onFinish: @escaping (CGRect?) -> Void) {
+        cancelInteraction()
+        tool = RegionTool(onFinish: onFinish)
+        isPickingRegion = true
+        updateCursorIfInside()
+    }
+
+    /// Puts the current tool back. Safe to call when no pick is running.
+    func endRegionPick() {
+        guard isPickingRegion else { return }
+        tool.cancel(in: self)
+        isPickingRegion = false
+        toolKind = toolState.tool
+        tool = makeTool(toolKind)
+        updateCursorIfInside()
+    }
+
+    private func updateCursorIfInside() {
+        if window?.isVisible == true, let window,
+            bounds.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil))
+        {
+            tool.cursor.set()
+        }
     }
 
     // MARK: Selection
@@ -280,6 +309,11 @@ final class CanvasView: NSView, NSTextViewDelegate {
     // MARK: Keyboard
 
     override func keyDown(with event: NSEvent) {
+        if let region = tool as? RegionTool {
+            // While picking a region, Esc cancels and every other key is ignored.
+            if Int(event.keyCode) == kVK_Escape { region.abort(in: self) }
+            return
+        }
         let modifiers = event.modifierFlags.intersection([.command, .control, .option])
         switch Int(event.keyCode) {
         case kVK_Escape:
@@ -338,6 +372,10 @@ final class CanvasView: NSView, NSTextViewDelegate {
             selection = Set(document.annotations.map(\.id))
         case (kVK_ANSI_RightBracket, [.command]):
             document.bringToFront(ids: selection)
+        case (kVK_ANSI_C, [.command]):
+            onCopyRequest?(false)
+        case (kVK_ANSI_C, [.command, .shift]):
+            onCopyRequest?(true)
         default:
             return super.performKeyEquivalent(with: event)
         }
