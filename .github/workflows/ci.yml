@@ -1,0 +1,13 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  build-and-test:
+    runs-on: macos-15  # Apple Silicon runner
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests
+        run: swift test
+      - name: App bundle (arm64 only)
+        run: scripts/build-app.sh
+      - name: Rendering self-test
+        run: build/ScreenInk.app/Contents/MacOS/ScreenInk --self-test "$RUNNER_TEMP/selftest"
