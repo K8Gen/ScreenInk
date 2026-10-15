@@ -1,14 +1,15 @@
 import AppKit
 import ScreenInkCore
 
-/// Transient visuals above the annotations: shape previews, selection boxes, the marquee
-/// and the eraser ring. Layer-hosting, top-left geometry.
+/// Transient visuals above the annotations: shape previews, selection boxes, the marquee,
+/// the eraser ring and the copy flash. Layer-hosting, top-left geometry.
 final class OverlayLayerView: NSView {
     private let root = CALayer()
     private let previewContainer = CALayer()
     private let selectionLayer = CAShapeLayer()
     private let marqueeLayer = CAShapeLayer()
     private let eraserLayer = CAShapeLayer()
+    private let flashLayer = CAShapeLayer()
 
     override var isFlipped: Bool { true }
 
@@ -27,7 +28,9 @@ final class OverlayLayerView: NSView {
         eraserLayer.fillColor = NSColor.white.withAlphaComponent(0.25).cgColor
         eraserLayer.strokeColor = NSColor.black.withAlphaComponent(0.6).cgColor
         eraserLayer.lineWidth = 1
-        for sublayer in [previewContainer, selectionLayer, marqueeLayer, eraserLayer] {
+        flashLayer.fillColor = NSColor.white.cgColor
+        flashLayer.opacity = 0
+        for sublayer in [previewContainer, selectionLayer, marqueeLayer, eraserLayer, flashLayer] {
             root.addSublayer(sublayer)
         }
     }
@@ -49,7 +52,7 @@ final class OverlayLayerView: NSView {
     override func layout() {
         super.layout()
         withoutAnimation {
-            for sublayer in [previewContainer, selectionLayer, marqueeLayer, eraserLayer] {
+            for sublayer in [previewContainer, selectionLayer, marqueeLayer, eraserLayer, flashLayer] {
                 sublayer.frame = bounds
                 sublayer.contentsScale = scale
             }
@@ -86,4 +89,16 @@ final class OverlayLayerView: NSView {
             }
         }
     }
+
+    /// A short white flash over `rect`: the copy went to the clipboard.
+    func flash(_ rect: CGRect) {
+        withoutAnimation { flashLayer.path = CGPath(rect: rect, transform: nil) }
+        let fade = CABasicAnimation(keyPath: "opacity")
+        fade.fromValue = 0.6
+        fade.toValue = 0
+        fade.duration = Self.flashDuration
+        flashLayer.add(fade, forKey: "flash")
+    }
+
+    static let flashDuration: CFTimeInterval = 0.25
 }
