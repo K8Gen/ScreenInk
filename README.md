@@ -19,6 +19,7 @@ With **Dim Screen While Drawing** on, the screen behind the ink darkens so annot
 - Floating tool palette with 9 colors and a width slider
 - Works over full-screen apps, on every Space and on all connected displays, and keeps each display's drawing when monitors are plugged in or out
 - Menu-bar settings: auto-fade drawings after a few seconds, dim the screen while drawing, launch at login
+- Copy the screen or a dragged region, with the drawings, to the clipboard as PNG (needs the Screen Recording permission)
 
 ## Requirements
 
@@ -51,6 +52,7 @@ The bundle is ad-hoc signed by default. To sign it for distribution, set `SIGN_I
 | C | Clear all |
 | ⌘Z · ⇧⌘Z | Undo · Redo |
 | ⌘A · ⌘] | Select all · Bring to front |
+| ⌘C · ⇧⌘C | Copy screen · Copy region (PNG to the clipboard) |
 | Delete | Delete the selection |
 | Esc | Deselect, or stop drawing |
 

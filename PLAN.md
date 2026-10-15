@@ -91,6 +91,7 @@ None are requested at first launch. Each one is asked for the first time its fea
 - **Deferred to the backlog:** text background pill and the eraser's "preserve kinds" filter.
 - **Added (not in the original scope):** dim the screen while drawing. The amount is set in the menu-bar submenu "Dim Screen While Drawing" (Off/Slightly/Medium/Strongly) and saved as `ToolState.dimLevel`. It's drawn as a black `DimView` under the annotations in every canvas.
 - **Overlay focus:** the overlay is a non-activating panel that becomes key without activating the app, so the presenter's app keeps the menu bar. There's no "remember and re-activate the previous app" step.
+- **Phase 5, early part:** Copy Screen (⌘C) and Copy Region… (⇧⌘C) put a PNG of the screen with the annotations on the clipboard (`ScreenCapturer`, `ExportRenderer`, `ScreenExporter`, `ExportRegion`). The capture excludes our own windows, and the annotations come from the model. Snapshots, the gallery, PDF and file export are still open. Design: `.kiro/specs/export-png/design.md`.
 
 **Phase 0 — Skeleton (2 days)**
 - Xcode project (arm64, macOS 14, hardened runtime), `LSUIElement`, `NSStatusItem` menu (Activate, Ghost Mode, Snapshots…, Settings…, Quit), KeyboardShortcuts hotkey, `SMAppService.mainApp` launch-at-login toggle, and CI (`xcodebuild test` on GitHub macOS arm64 runners).
