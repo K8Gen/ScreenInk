@@ -161,6 +161,22 @@ enum SelfTest {
         }
         toolState.dimLevel = 0
 
+        // 9. Copy Region… swaps in the region tool: a drag gives the rect, a click cancels.
+        var picked: CGRect?? = nil
+        canvas.beginRegionPick { picked = .some($0) }
+        check(canvas.currentTool is RegionTool, "region pick didn't swap in the region tool")
+        canvas.simulateGesture([CGPoint(x: 300, y: 250), CGPoint(x: 250, y: 220), CGPoint(x: 220, y: 200)])
+        check(picked == .some(CGRect(x: 220, y: 200, width: 80, height: 50)), "region pick gave \(String(describing: picked))")
+        check(document.annotations.count == 1, "the region drag drew an annotation")
+        canvas.endRegionPick()
+        check(canvas.currentTool is ShapeTool, "the rectangle tool wasn't restored after the pick")
+        picked = nil
+        canvas.beginRegionPick { picked = .some($0) }
+        canvas.simulateGesture([CGPoint(x: 50, y: 50)])
+        check(picked == .some(nil), "a click didn't cancel the region pick")
+        canvas.endRegionPick()
+        document.removeAll()
+
         print("self-test: live/committed pixel difference \(String(format: "%.4f%%", difference * 100))")
         for failure in failures { print("FAIL: \(failure)") }
         print(failures.isEmpty ? "self-test: PASS" : "self-test: FAIL")
